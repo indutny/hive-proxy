@@ -12,7 +12,7 @@ const config = fs.readFileSync(process.argv[2]).toString();
 const hive = new Hive(JSON.parse(config));
 
 hive.init().then(() => {
-  hive.listen(8000, () => {
+  hive.listen(config.port, config.host, () => {
     console.error(`Listening on %j`, hive.address());
 
     process.on('SIGINT', () => {
