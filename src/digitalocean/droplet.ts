@@ -5,7 +5,8 @@ import { DigitalOcean } from './index';
 import { IDropletResponse } from './types';
 
 const debug = debugAPI('hive-proxy:digitalocean:droplet');
-const IMPORT_DELAY = 2500;
+const MIN_INIT_DELAY = 2500;
+const MAX_INIT_DELAY = 7500;
 
 export class Droplet {
   public readonly id: number;
@@ -24,7 +25,8 @@ export class Droplet {
 
   public async init(): Promise<void> {
     debug('initializing droplet after delay');
-    await delay(IMPORT_DELAY);
+    await delay(MIN_INIT_DELAY +
+      Math.random() * (MAX_INIT_DELAY - MIN_INIT_DELAY));
 
     debug('initializing droplet');
     const response = await this.api.retrieveDroplet(this.id);
