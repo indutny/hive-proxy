@@ -1,23 +1,15 @@
 #!/usr/bin/env npx ts-node
 import { Hive } from '../src/hive';
+import * as fs from 'fs';
 
-const hive = new Hive({
-  size: 4,
+if (process.argv.length < 3) {
+  console.error(`Usage: ${process.argv[1]} config.json`);
+  process.exit(1);
+}
 
-  cloud: {
-    provider: 'digitalocean',
-    region: 'nyc1',
-    size: 's-1vcpu-1gb',
-    image: 'drone-prototype',
-    sshKey: 'main',
-    tag: 'test-hive',
-  },
+const config = fs.readFileSync(process.argv[2]).toString();
 
-  drone: {
-    port: 8000,
-    timeout: 5000,
-  }
-});
+const hive = new Hive(JSON.parse(config));
 
 hive.init().then(() => {
   hive.listen(8000, () => {
