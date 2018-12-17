@@ -7,7 +7,7 @@ if (process.argv.length < 3) {
   process.exit(1);
 }
 
-const config = JSON.stringify(fs.readFileSync(process.argv[2]).toString());
+const config = JSON.parse(fs.readFileSync(process.argv[2]).toString());
 
 const hive = new Hive(config);
 
