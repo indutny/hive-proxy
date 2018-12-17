@@ -132,6 +132,7 @@ export class Hive extends http.Server {
       this.drones[i] = new Promise((resolve) => resolves.push(resolve));
     }
 
+    debug('spawning droplets');
     const droplets = await this.cloud.createDroplets(
       this.drones.map(() => DROPLET_NAME),
       {
@@ -141,6 +142,7 @@ export class Hive extends http.Server {
         sshKeys: [ this.sshKeyId! ],
         tags: [ this.config.cloud.tag ],
       });
+    debug(`spawned ${droplets.length} droplets`);
 
     await Promise.all(droplets.map(async (droplet, i) => {
       const drone = new Drone(droplet, this.config.drone);
