@@ -46,8 +46,4 @@ export class Drone {
 
     return `http://${this.droplet.addresses[0]}:${this.config.port}`;
   }
-
-  public async delete() {
-    await this.droplet.delete();
-  }
 }

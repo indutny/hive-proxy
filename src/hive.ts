@@ -35,7 +35,7 @@ export interface IHiveConfig {
 export class Hive extends http.Server {
   private readonly proxy = new HTTPProxy();
   private readonly cloud: DigitalOcean;
-  private readonly drones: (Drone | undefined)[];
+  private readonly drones: (Promise<Drone> | Drone | undefined)[];
   private timer: any;
 
   // Cloud config
@@ -107,15 +107,11 @@ export class Hive extends http.Server {
     // Drones shall not be deleted
     this.refresh();
 
-    let drone: Drone;
-    if (this.drones[droneIndex]) {
-      debug('drone exists');
-      drone = this.drones[droneIndex]!;
-    } else {
-      debug('creating new drone');
-      drone = await this.spawnDrone();
-      this.drones[droneIndex] = drone;
+    if (!this.drones[droneIndex]) {
+      debug('time to spawn the drones!');
+      await this.spawnDrones();
     }
+    const drone = await this.drones[droneIndex]!;
 
     // Drones still shall not be deleted
     this.refresh();
@@ -130,22 +126,32 @@ export class Hive extends http.Server {
     });
   }
 
-  private async spawnDrone(): Promise<Drone> {
-    const [ droplet ] = await this.cloud.createDroplets([ DROPLET_NAME ], {
-      region: this.config.cloud.region,
-      size: this.config.cloud.size,
-      image: this.image!,
-      sshKeys: [ this.sshKeyId! ],
-      tags: [ this.config.cloud.tag ],
-    });
+  private async spawnDrones() {
+    const resolves: Array<(drone: Drone) => void> = [];
+    for (let i = 0; i < this.drones.length; i++) {
+      this.drones[i] = new Promise((resolve) => resolves.push(resolve));
+    }
 
-    const drone = new Drone(droplet, this.config.drone);
+    const droplets = await this.cloud.createDroplets(
+      this.drones.map(() => DROPLET_NAME),
+      {
+        region: this.config.cloud.region,
+        size: this.config.cloud.size,
+        image: this.image!,
+        sshKeys: [ this.sshKeyId! ],
+        tags: [ this.config.cloud.tag ],
+      });
 
-    debug('initializing drone');
-    await drone.init();
-    debug('drone ready');
+    await Promise.all(droplets.map(async (droplet, i) => {
+      const drone = new Drone(droplet, this.config.drone);
 
-    return drone;
+      debug(`initializing drone ${i}`);
+      await drone.init();
+      debug(`drone ${i} ready`);
+
+      this.drones[i] = drone;
+      resolves[i](drone);
+    }));
   }
 
   private refresh() {
@@ -156,13 +162,9 @@ export class Hive extends http.Server {
     this.timer = setTimeout(() => {
       debug(`timed out, delete all drones`);
       this.timer = undefined;
-      const drones = this.drones.slice();
-      this.drones.fill(undefined);
 
-      Promise.all(
-        drones
-          .filter((drone) => drone)
-          .map(async (drone) => drone!.delete()))
+      this.drones.fill(undefined);
+      this.cloud.deleteDropletsByTag(this.config.cloud.tag)
         .catch((e) => {
           debug(`timeout drone delete error: ${e.stack}`);
         });
