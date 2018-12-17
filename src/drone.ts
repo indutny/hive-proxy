@@ -10,14 +10,11 @@ const RETRY_DELAY = 1000;
 
 export interface IDroneConfig {
   readonly port: number;
-  readonly timeout: number;
   readonly auth?: string;
+  readonly timeout: number;
 }
 
 export class Drone {
-  private timer: any;
-  private onTimeout: ((res: Promise<void>) => void) | undefined;
-
   constructor(private readonly droplet: Droplet,
               private readonly config: IDroneConfig) {
   }
@@ -35,10 +32,11 @@ export class Drone {
         method: 'HEAD',
       });
     } catch (e) {
-      debug(`status check failed ${e.stack}, retrying`);
+      debug(`status check failed ${e.message}, retrying`);
       return await this.init();
     }
-    this.refresh();
+
+    debug('drone ready');
   }
 
   public get url(): string {
@@ -49,30 +47,7 @@ export class Drone {
     return `http://${this.droplet.addresses[0]}:${this.config.port}`;
   }
 
-  public refresh() {
-    // Already fired
-    if (!this.onTimeout) {
-      return;
-    }
-
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-
-    this.timer = setTimeout(() => {
-      const resolve = this.onTimeout!;
-      this.onTimeout = undefined;
-      resolve(this.delete());
-    }, this.config.timeout);
-  }
-
-  public async exit() {
-    return new Promise((resolve) => {
-      this.onTimeout = resolve;
-    });
-  }
-
-  private async delete() {
+  public async delete() {
     await this.droplet.delete();
   }
 }

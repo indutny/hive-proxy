@@ -24,9 +24,10 @@ export class Droplet {
   }
 
   public async init(): Promise<void> {
-    debug('initializing droplet after delay');
-    await delay(MIN_INIT_DELAY +
-      Math.random() * (MAX_INIT_DELAY - MIN_INIT_DELAY));
+    const timeout = MIN_INIT_DELAY +
+      Math.random() * (MAX_INIT_DELAY - MIN_INIT_DELAY);
+    debug(`initializing droplet after ${(timeout / 1000).toFixed(3)} secs`);
+    await delay(timeout);
 
     debug('initializing droplet');
     const response = await this.api.retrieveDroplet(this.id);

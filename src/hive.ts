@@ -36,6 +36,7 @@ export class Hive extends http.Server {
   private readonly proxy = new HTTPProxy();
   private readonly cloud: DigitalOcean;
   private readonly drones: (Drone | undefined)[];
+  private timer: any;
 
   // Cloud config
   private sshKeyId: number | undefined;
@@ -103,6 +104,9 @@ export class Hive extends http.Server {
     const droneIndex = hash(req.url || '') % this.drones.length;
     debug(`forwarding request ${req.url} to drone ${droneIndex}`);
 
+    // Drones shall not be deleted
+    this.refresh();
+
     let drone: Drone;
     if (this.drones[droneIndex]) {
       debug('drone exists');
@@ -111,15 +115,10 @@ export class Hive extends http.Server {
       debug('creating new drone');
       drone = await this.spawnDrone();
       this.drones[droneIndex] = drone;
-
-      drone.exit().then(() => {
-        debug(`drone ${droneIndex} exit`);
-        this.drones[droneIndex] = undefined;
-      });
     }
 
-    // Prevent this drone from exiting
-    drone.refresh();
+    // Drones still shall not be deleted
+    this.refresh();
 
     debug('proxying request');
     this.proxy.web(req, res, {
@@ -147,5 +146,26 @@ export class Hive extends http.Server {
     debug('drone ready');
 
     return drone;
+  }
+
+  private refresh() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
+
+    this.timer = setTimeout(() => {
+      debug(`timed out, delete all drones`);
+      this.timer = undefined;
+      const drones = this.drones.slice();
+      this.drones.fill(undefined);
+
+      Promise.all(
+        drones
+          .filter((drone) => drone)
+          .map(async (drone) => drone!.delete()))
+        .catch((e) => {
+          debug(`timeout drone delete error: ${e.stack}`);
+        });
+    }, this.config.drone.timeout);
   }
 }
