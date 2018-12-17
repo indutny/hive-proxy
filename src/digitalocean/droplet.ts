@@ -5,8 +5,8 @@ import { DigitalOcean } from './index';
 import { IDropletResponse } from './types';
 
 const debug = debugAPI('hive-proxy:digitalocean:droplet');
-const MIN_INIT_DELAY = 2500;
-const MAX_INIT_DELAY = 7500;
+const MIN_INIT_DELAY = 10000;
+const MAX_INIT_DELAY = 20000;
 
 export class Droplet {
   public readonly id: number;
