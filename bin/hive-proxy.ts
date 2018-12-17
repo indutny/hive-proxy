@@ -11,17 +11,20 @@ const config = JSON.parse(fs.readFileSync(process.argv[2]).toString());
 
 const hive = new Hive(config);
 
-hive.init().then(() => {
-  hive.listen(config.port, config.host, () => {
-    console.error(`Listening on %j`, hive.address());
+(async () => {
+  await hive.init();
 
-    process.on('SIGINT', () => {
-      console.error('shutting down...');
-      hive.destroy().catch((e) => {
-        throw e;
-      });
-    });
+  await new Promise((resolve) => {
+    hive.listen(config.port, config.host, resolve);
   });
-}).catch((e) => {
-  throw e;
+
+  console.error(`Listening on %j`, hive.address());
+
+  await new Promise((resolve) => process.once('SIGINT', resolve));
+  console.error('shutting down...');
+
+  await hive.destroy();
+})().catch((e) => {
+  console.error(e.stack);
+  process.exit(1);
 });

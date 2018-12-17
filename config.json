@@ -4,7 +4,6 @@
   "size": 4,
 
   "cloud": {
-    "authToken": null,
     "provider": "digitalocean",
     "region": "nyc1",
     "size": "s-1vcpu-1gb",
